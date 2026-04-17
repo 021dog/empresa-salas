@@ -1,5 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { Room, Company, Booking, WaitlistEntry, User } from '../types';
+import { 
+  Room, 
+  Company, 
+  Booking, 
+  WaitlistEntry, 
+  User, 
+  RoomType, 
+  RoomStatus, 
+  BookingStatus, 
+  WaitlistStatus 
+} from '../types';
 import { MOCK_ROOMS, MOCK_COMPANIES, MOCK_BOOKINGS, MOCK_WAITLIST } from '../data/mockData';
 import { format } from 'date-fns';
 import { supabase } from '../lib/supabase';
@@ -19,7 +29,7 @@ interface WorkspaceContextType {
   settings: WorkspaceSettings;
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password?: string) => Promise<{ success: boolean; message?: string; role?: 'admin' | 'user' }>;
+  login: (email: string, password?: string) => Promise<{ success: boolean; message?: string; role?: 'admin' | 'management' | 'user' }>;
   signInWithGoogle: () => Promise<{ success: boolean; url?: string; message?: string }>;
   signUp: (email: string, password: string, name: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
@@ -28,16 +38,18 @@ interface WorkspaceContextType {
   addRoom: (room: Omit<Room, 'id'>) => Promise<void>;
   updateRoom: (id: string, room: Partial<Room>) => Promise<void>;
   deleteRoom: (id: string) => Promise<void>;
-  getRoomStatus: (roomId: string) => 'available' | 'busy';
+  getRoomStatus: (roomId: string) => RoomStatus;
   // CRUD Companies
   addCompany: (company: Omit<Company, 'id'>) => Promise<void>;
   updateCompany: (id: string, company: Partial<Company>) => Promise<void>;
   deleteCompany: (id: string) => Promise<void>;
   // Bookings
   createBooking: (booking: Omit<Booking, 'id' | 'status'>) => Promise<{ success: boolean, message: string }>;
+  updateBookingStatus: (id: string, status: BookingStatus) => Promise<void>;
   cancelBooking: (id: string) => Promise<void>;
   // Waitlist
-  addToWaitlist: (entry: Omit<WaitlistEntry, 'id' | 'createdAt'>) => Promise<void>;
+  addToWaitlist: (entry: Omit<WaitlistEntry, 'id' | 'createdAt' | 'status'>) => Promise<void>;
+  updateWaitlistStatus: (id: string, status: WaitlistStatus) => Promise<void>;
   removeFromWaitlist: (id: string) => Promise<void>;
 }
 
@@ -46,8 +58,8 @@ const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefin
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [rooms, setRooms] = useState<Room[]>(MOCK_ROOMS);
   const [companies, setCompanies] = useState<Company[]>(MOCK_COMPANIES);
-  const [bookings, setBookings] = useState<Booking[]>(MOCK_BOOKINGS);
-  const [waitlist, setWaitlist] = useState<WaitlistEntry[]>(MOCK_WAITLIST);
+  const [bookings, setBookings] = useState<Booking[]>(MOCK_BOOKINGS.map(b => ({ ...b, status: b.status as BookingStatus })));
+  const [waitlist, setWaitlist] = useState<WaitlistEntry[]>(MOCK_WAITLIST.map(w => ({ ...w, status: 'waiting' })));
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -184,10 +196,10 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password?: string) => {
     if (!supabase) {
       if (email.includes('@')) {
-        const role: 'admin' | 'user' = email.startsWith('admin') ? 'admin' : 'user';
+        const role: 'admin' | 'management' | 'user' = email.startsWith('admin') ? 'admin' : (email.startsWith('mgr') ? 'management' : 'user');
         const mockUser: User = { 
-          id: role === 'admin' ? 'admin-1' : 'user-1', 
-          name: role === 'admin' ? 'Administrador' : 'Usuário', 
+          id: role === 'admin' ? 'admin-1' : (role === 'management' ? 'mgr-1' : 'user-1'), 
+          name: role === 'admin' ? 'Administrador' : (role === 'management' ? 'Gestão' : 'Usuário'), 
           email, 
           role 
         };
@@ -255,7 +267,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     if (supabase) {
       await supabase.from('rooms').insert([room]);
     } else {
-      const newRoom = { ...room, id: Math.random().toString(36).substr(2, 9) };
+      const newRoom = { ...room, id: Math.random().toString(36).substr(2, 9), status: 'available' as RoomStatus };
       setRooms(prev => [...prev, newRoom]);
     }
   };
@@ -303,41 +315,63 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   const createBooking = async (newBooking: Omit<Booking, 'id' | 'status'>) => {
     const hasConflict = bookings.some(b => {
-      if (b.status === 'cancelled') return false;
+      if (b.status === 'cancelled' || b.status === 'rejected') return false;
       if (b.roomId !== newBooking.roomId) return false;
       if (b.date !== newBooking.date) return false;
       return (newBooking.startTime < b.endTime) && (newBooking.endTime > b.startTime);
     });
 
     if (hasConflict) {
-      return { success: false, message: 'Conflito de Horário detectado.' };
+      return { success: false, message: 'Conflito de Horário detectado. Escolha outro período.' };
     }
 
+    const defaultStatus: BookingStatus = (user?.role === 'admin' || user?.role === 'management') ? 'confirmed' : 'pending';
+
     if (supabase) {
-      const { error } = await supabase.from('bookings').insert([{ ...newBooking, status: 'confirmed' }]);
+      const { error } = await supabase.from('bookings').insert([{ ...newBooking, status: defaultStatus }]);
       if (error) return { success: false, message: error.message };
     } else {
-      const booking: Booking = { ...newBooking, id: Math.random().toString(36).substr(2, 9), status: 'confirmed' };
+      const booking: Booking = { ...newBooking, id: Math.random().toString(36).substr(2, 9), status: defaultStatus };
       setBookings(prev => [...prev, booking]);
     }
 
-    return { success: true, message: 'Reserva confirmada!' };
+    return { 
+      success: true, 
+      message: defaultStatus === 'confirmed' ? 'Reserva confirmada com sucesso!' : 'Reserva solicitada. Aguardando aprovação administrativa.' 
+    };
   };
 
-  const cancelBooking = async (id: string) => {
+  const updateBookingStatus = async (id: string, status: BookingStatus) => {
     if (supabase) {
-      await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', id);
+      await supabase.from('bookings').update({ status }).eq('id', id);
     } else {
-      setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'cancelled' } : b));
+      setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b));
     }
   };
 
-  const addToWaitlist = async (entry: Omit<WaitlistEntry, 'id' | 'createdAt'>) => {
+  const cancelBooking = async (id: string) => {
+    await updateBookingStatus(id, 'cancelled');
+  };
+
+  const addToWaitlist = async (entry: Omit<WaitlistEntry, 'id' | 'createdAt' | 'status'>) => {
     if (supabase) {
-      await supabase.from('waitlist').insert([entry]);
+      await supabase.from('waitlist').insert([{ ...entry, status: 'waiting' }]);
     } else {
-      const newEntry: WaitlistEntry = { ...entry, id: Math.random().toString(36).substr(2, 9), createdAt: new Date().toISOString() };
+      const newEntry: WaitlistEntry = { 
+        ...entry, 
+        id: Math.random().toString(36).substr(2, 9), 
+        createdAt: new Date().toISOString(),
+        status: 'waiting'
+      };
       setWaitlist(prev => [...prev, newEntry]);
+    }
+  };
+
+  const updateWaitlistStatus = async (id: string, status: WaitlistStatus) => {
+    if (supabase) {
+      await supabase.from('waitlist').update({ status }).eq('id', id);
+    } else {
+      setWaitlist(prev => prev.map(w => w.id === id ? { ...w, status } : w));
     }
   };
 
@@ -350,13 +384,16 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Room Status logic
-  const getRoomStatus = (roomId: string): 'available' | 'busy' => {
+  const getRoomStatus = (roomId: string): RoomStatus => {
+    const room = rooms.find(r => r.id === roomId);
+    if (room?.status === 'maintenance') return 'maintenance';
+
     const now = new Date();
     const todayStr = format(now, 'yyyy-MM-dd');
     const currentTime = format(now, 'HH:mm');
 
     const isOccupied = bookings.some(b => {
-      if (b.status === 'cancelled') return false;
+      if (b.status === 'cancelled' || b.status === 'rejected') return false;
       if (b.roomId !== roomId) return false;
       if (b.date !== todayStr) return false;
 
@@ -372,8 +409,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       login, signUp, logout, updateSettings, signInWithGoogle,
       addRoom, updateRoom, deleteRoom, getRoomStatus,
       addCompany, updateCompany, deleteCompany,
-      createBooking, cancelBooking,
-      addToWaitlist, removeFromWaitlist
+      createBooking, cancelBooking, updateBookingStatus,
+      addToWaitlist, updateWaitlistStatus, removeFromWaitlist
     }}>
       {children}
     </WorkspaceContext.Provider>

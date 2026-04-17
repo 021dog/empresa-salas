@@ -249,10 +249,18 @@ export default function RoomDetail() {
                   disabled={isReserving}
                   className="w-full py-4 bg-black text-white font-bold rounded-xl hover:bg-gray-800 transition-all shadow-lg hover:shadow-black/20 flex items-center justify-center group disabled:opacity-50"
                 >
-                  {isReserving ? 'Processando...' : 'Confirmar Reserva'}
+                  {isReserving ? 'Enviando...' : (user?.role === 'admin' ? 'Confirmar Reserva' : 'Solicitar Reserva')}
                   {!isReserving && <ChevronRight className="ml-1 w-4 h-4 group-hover:translate-x-0.5 transition-transform" />}
                 </button>
               </form>
+
+              <div className="mt-4 text-center">
+                 <p className="text-[10px] text-gray-400 font-medium italic">
+                    {user?.role === 'admin' 
+                      ? '* Reservas de administrador são confirmadas instantaneamente.' 
+                      : '* Sua solicitação passará por aprovação da coordenação.'}
+                 </p>
+              </div>
 
               <div className="mt-8 pt-8 border-t border-gray-100">
                 <p className="text-center text-sm text-gray-500 mb-4">Sala ocupada ou sem horários?</p>

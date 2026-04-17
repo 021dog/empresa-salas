@@ -11,6 +11,7 @@ import { WorkspaceProvider, useWorkspace } from './context/WorkspaceContext';
 import Home from './pages/Public/Home';
 import RoomList from './pages/Public/RoomList';
 import RoomDetail from './pages/Public/RoomDetail';
+import Auditorium from './pages/Public/Auditorium';
 import CompanyDirectory from './pages/Public/CompanyDirectory';
 import MyBookings from './pages/Public/MyBookings';
 import Login from './pages/Auth/Login';
@@ -60,6 +61,7 @@ function AppContent() {
         <Route path="/" element={<Home />} />
         <Route path="/salas" element={<RoomList />} />
         <Route path="/salas/:id" element={<RoomDetail />} />
+        <Route path="/auditorio" element={<Auditorium />} />
         <Route path="/empresas" element={<CompanyDirectory />} />
         <Route path="/meus-agendamentos" element={<MyBookings />} />
         <Route path="/auth/callback" element={<AuthCallback />} />

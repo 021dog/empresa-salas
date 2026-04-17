@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import { Calendar as CalendarIcon, Clock, Building2, X, Plus, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, Building2, X, Plus, ChevronLeft, ChevronRight, AlertTriangle, Check, XCircle } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function AdminBookings() {
-  const { bookings, rooms, companies, createBooking, cancelBooking } = useWorkspace();
+  const { bookings, rooms, companies, createBooking, cancelBooking, updateBookingStatus } = useWorkspace();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -22,14 +22,15 @@ export default function AdminBookings() {
     endTime: '10:00',
   });
 
-  const activeBookings = bookings.filter(b => b.status === 'confirmed');
+  const pendingBookings = bookings.filter(b => b.status === 'pending');
+  const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
   const calendarDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
   const getDayBookings = (day: Date) => {
-    return activeBookings.filter(b => isSameDay(new Date(b.date + 'T12:00:00'), day));
+    return confirmedBookings.filter(b => isSameDay(new Date(b.date + 'T12:00:00'), day));
   };
 
   const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
@@ -121,14 +122,59 @@ export default function AdminBookings() {
         </div>
 
         {/* List Column */}
-        <div className="xl:col-span-1">
+        <div className="xl:col-span-1 space-y-10">
+            {/* Pending Requests */}
+            {pendingBookings.length > 0 && (
+                <div className="bg-amber-50 rounded-3xl border border-amber-100 shadow-sm flex flex-col overflow-hidden">
+                    <div className="p-6 border-b border-amber-100 flex items-center justify-between">
+                        <h2 className="text-base font-bold text-amber-900">Solicitações Pendentes</h2>
+                        <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-bold">{pendingBookings.length}</span>
+                    </div>
+                    <div className="p-2 space-y-2">
+                        {pendingBookings.map((booking) => {
+                            const room = rooms.find(r => r.id === booking.roomId);
+                            const company = companies.find(c => c.id === booking.companyId);
+                            return (
+                                <div key={booking.id} className="p-4 bg-white rounded-2xl border border-amber-100 shadow-sm">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div>
+                                            <p className="text-sm font-bold text-black">{company?.name || 'Empresa não encontrada'}</p>
+                                            <p className="text-[10px] text-gray-500">{room?.name}</p>
+                                        </div>
+                                        <div className="flex space-x-1">
+                                            <button 
+                                                onClick={() => updateBookingStatus(booking.id, 'confirmed')}
+                                                className="p-1.5 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                                                title="Confirmar"
+                                            >
+                                                <Check className="w-4 h-4" />
+                                            </button>
+                                            <button 
+                                                onClick={() => updateBookingStatus(booking.id, 'rejected')}
+                                                className="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                                                title="Rejeitar"
+                                            >
+                                                <XCircle className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                        {format(new Date(booking.date + 'T12:00:00'), 'dd/MM/yyyy')} · {booking.startTime} - {booking.endTime}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col h-full overflow-hidden">
                 <div className="p-6 border-b border-gray-50">
                     <h2 className="text-base font-bold">Reservas Confirmadas</h2>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2">
-                    {activeBookings.length > 0 ? (
-                        activeBookings.map((booking) => {
+                    {confirmedBookings.length > 0 ? (
+                        confirmedBookings.map((booking) => {
                             const room = rooms.find(r => r.id === booking.roomId);
                             const company = companies.find(c => c.id === booking.companyId);
                             return (
@@ -160,7 +206,7 @@ export default function AdminBookings() {
                             );
                         })
                     ) : (
-                        <p className="p-12 text-center text-sm text-gray-400 text-balance italic">Sem reservas ativas no sistema.</p>
+                        <p className="p-12 text-center text-sm text-gray-400 text-balance italic">Sem reservas confirmadas no sistema.</p>
                     )}
                 </div>
             </div>

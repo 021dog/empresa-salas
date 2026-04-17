@@ -88,37 +88,47 @@ export default function Home() {
             <p className="text-3xl md:text-5xl font-bold tracking-tight text-black">Uma solução para cada etapa.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
               {
                 title: 'Escritórios Privativos',
                 desc: 'Para equipes de todos os tamanhos, com total privacidade e personalização.',
                 icon: Building2,
-                image: 'https://picsum.photos/seed/office/800/600'
-              },
-              {
-                title: 'Espaços Compartilhados',
-                desc: 'A energia da comunidade com a flexibilidade que você precisa diariamente.',
-                icon: Users,
-                image: 'https://picsum.photos/seed/community/800/600'
+                image: 'https://picsum.photos/seed/office-p/800/600',
+                path: '/salas'
               },
               {
                 title: 'Salas de Reunião',
-                desc: 'Ambientes profissionais equipados para suas apresentações mais importantes.',
+                desc: 'Ambientes profissionais equipados para suas apresentações.',
                 icon: CalendarDays,
-                image: 'https://picsum.photos/seed/meeting/800/600'
+                image: 'https://picsum.photos/seed/meeting-p/800/600',
+                path: '/salas'
+              },
+              {
+                title: 'Auditório Master',
+                desc: 'O palco ideal para palestras, workshops e eventos corporativos.',
+                icon: Users,
+                image: 'https://picsum.photos/seed/auditorium-p/800/600',
+                path: '/auditorio'
+              },
+              {
+                title: 'Comunidade',
+                desc: 'Conecte-se com as empresas residentes no nosso diretório.',
+                icon: Users,
+                image: 'https://picsum.photos/seed/community-p/800/600',
+                path: '/empresas'
               }
             ].map((sol, i) => (
-              <Link key={i} to="/salas" className="group">
-                <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1">
-                  <div className="h-48 overflow-hidden">
+              <Link key={i} to={sol.path} className="group">
+                <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm transition-all h-full hover:shadow-xl hover:-translate-y-1 flex flex-col">
+                  <div className="h-40 overflow-hidden">
                     <img src={sol.image} alt={sol.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                   </div>
-                  <div className="p-8">
-                    <h3 className="text-xl font-bold mb-3">{sol.title}</h3>
-                    <p className="text-gray-500 text-sm leading-relaxed mb-6">{sol.desc}</p>
-                    <span className="text-black font-bold text-sm flex items-center group-hover:underline underline-offset-4">
-                      Saiba mais <ArrowRight className="ml-1 w-4 h-4" />
+                  <div className="p-6 flex-grow flex flex-col">
+                    <h3 className="text-lg font-bold mb-2">{sol.title}</h3>
+                    <p className="text-gray-500 text-xs leading-relaxed mb-6 flex-grow">{sol.desc}</p>
+                    <span className="text-black font-bold text-xs flex items-center group-hover:underline underline-offset-4">
+                      Explorar <ArrowRight className="ml-1 w-3.5 h-3.5" />
                     </span>
                   </div>
                 </div>

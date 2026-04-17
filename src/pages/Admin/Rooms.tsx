@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import { Plus, Edit3, Trash2, X, Image as ImageIcon } from 'lucide-react';
-import { Room, RoomType } from '../../types';
+import { Plus, Edit3, Trash2, X, Image as ImageIcon, Wrench, ShieldCheck, Clock } from 'lucide-react';
+import { Room, RoomType, RoomStatus } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
+import { cn } from '../../lib/utils';
 
 export default function AdminRooms() {
   const { rooms, addRoom, updateRoom, deleteRoom } = useWorkspace();
@@ -17,12 +18,23 @@ export default function AdminRooms() {
     description: '',
     pricePerHour: 0,
     imageUrl: 'https://picsum.photos/seed/office' + Math.floor(Math.random() * 1000) + '/800/600',
+    status: 'available',
+    features: [],
   });
 
   const handleOpenModal = (room?: Room) => {
     if (room) {
       setEditingRoom(room);
-      setFormData({ ...room });
+      setFormData({ 
+        name: room.name,
+        type: room.type,
+        capacity: room.capacity,
+        description: room.description,
+        pricePerHour: room.pricePerHour,
+        imageUrl: room.imageUrl,
+        status: room.status || 'available',
+        features: room.features || []
+      });
     } else {
       setEditingRoom(null);
       setFormData({
@@ -32,6 +44,8 @@ export default function AdminRooms() {
         description: '',
         pricePerHour: 0,
         imageUrl: 'https://picsum.photos/seed/office' + Math.floor(Math.random() * 1000) + '/800/600',
+        status: 'available',
+        features: []
       });
     }
     setIsModalOpen(true);
@@ -108,10 +122,24 @@ export default function AdminRooms() {
                   </span>
                 </td>
                 <td className="px-6 py-4">
-                  <p className="text-sm font-medium text-black">{room.capacity} pessoas</p>
+                  <div className="flex items-center">
+                    {room.status === 'maintenance' ? (
+                      <span className="flex items-center text-[10px] font-bold text-red-500 uppercase">
+                        <Wrench className="w-3 h-3 mr-1" /> Manutenção
+                      </span>
+                    ) : (room.status === 'busy' ? (
+                      <span className="flex items-center text-[10px] font-bold text-amber-500 uppercase">
+                        <Clock className="w-3 h-3 mr-1" /> Ocupada
+                      </span>
+                    ) : (
+                      <span className="flex items-center text-[10px] font-bold text-green-500 uppercase">
+                        <ShieldCheck className="w-3 h-3 mr-1" /> Disponível
+                      </span>
+                    ))}
+                  </div>
                 </td>
-                <td className="px-6 py-4">
-                  <p className="text-sm font-bold text-black">R${room.pricePerHour}</p>
+                <td className="px-6 py-4 font-bold text-sm">
+                  R${room.pricePerHour}
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex justify-end space-x-2">
@@ -183,29 +211,43 @@ export default function AdminRooms() {
                       <option value="Private Office">Private Office</option>
                       <option value="Meeting Room">Meeting Room</option>
                       <option value="Lounge">Lounge</option>
+                      <option value="Auditorium">Auditorium</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Capacidade</label>
-                    <input
-                      required
-                      type="number"
-                      min="1"
-                      value={formData.capacity}
-                      onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-1 focus:ring-black focus:border-black"
-                    />
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Status</label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value as RoomStatus })}
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-1 focus:ring-black focus:border-black appearance-none"
+                    >
+                      <option value="available">Disponível</option>
+                      <option value="maintenance">Manutenção</option>
+                    </select>
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Preço por Hora (R$)</label>
-                    <input
-                      required
-                      type="number"
-                      min="0"
-                      value={formData.pricePerHour}
-                      onChange={(e) => setFormData({ ...formData, pricePerHour: parseFloat(e.target.value) })}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-1 focus:ring-black focus:border-black"
-                    />
+                  <div className="col-span-2 grid grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Capacidade</label>
+                      <input
+                        required
+                        type="number"
+                        min="1"
+                        value={formData.capacity}
+                        onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-1 focus:ring-black focus:border-black"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Preço por Hora (R$)</label>
+                      <input
+                        required
+                        type="number"
+                        min="0"
+                        value={formData.pricePerHour}
+                        onChange={(e) => setFormData({ ...formData, pricePerHour: parseFloat(e.target.value) })}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-1 focus:ring-black focus:border-black"
+                      />
+                    </div>
                   </div>
                   <div className="col-span-2">
                     <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Descrição</label>

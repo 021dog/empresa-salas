@@ -17,15 +17,16 @@ import { Link } from 'react-router-dom';
 export default function Dashboard() {
   const { rooms, companies, bookings, waitlist } = useWorkspace();
 
-  const activeBookings = bookings.filter(b => b.status === 'confirmed');
+  const pendingBookings = bookings.filter(b => b.status === 'pending');
+  const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
   const today = format(new Date(), 'yyyy-MM-dd');
-  const bookingsToday = activeBookings.filter(b => b.date === today);
+  const bookingsToday = confirmedBookings.filter(b => b.date === today);
 
   const stats = [
     { name: 'Total de Salas', value: rooms.length, icon: DoorOpen, color: 'text-blue-600', bg: 'bg-blue-50', path: '/admin/rooms' },
+    { name: 'Aprovações Pendentes', value: pendingBookings.length, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', path: '/admin/bookings' },
     { name: 'Reservas Hoje', value: bookingsToday.length, icon: CalendarDays, color: 'text-green-600', bg: 'bg-green-50', path: '/admin/bookings' },
-    { name: 'Empresas Residentes', value: companies.length, icon: Building2, color: 'text-purple-600', bg: 'bg-purple-50', path: '/admin/companies' },
-    { name: 'Lista de Espera', value: waitlist.length, icon: ListOrdered, color: 'text-orange-600', bg: 'bg-orange-50', path: '/admin/waitlist' },
+    { name: 'Leads (Espera)', value: waitlist.filter(w => w.status === 'waiting').length, icon: ListOrdered, color: 'text-purple-600', bg: 'bg-purple-50', path: '/admin/waitlist' },
   ];
 
   return (
@@ -75,8 +76,8 @@ export default function Dashboard() {
             <Link to="/admin/bookings" className="text-xs font-bold text-black hover:underline uppercase tracking-widest">Ver Todas</Link>
           </div>
           <div className="px-6 py-2 flex-grow overflow-y-auto max-h-[400px]">
-            {activeBookings.length > 0 ? (
-              activeBookings.slice(0, 5).map((booking) => {
+            {confirmedBookings.length > 0 ? (
+              confirmedBookings.slice(0, 5).map((booking) => {
                 const room = rooms.find(r => r.id === booking.roomId);
                 const company = companies.find(c => c.id === booking.companyId);
                 return (

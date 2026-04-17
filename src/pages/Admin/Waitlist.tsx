@@ -1,15 +1,35 @@
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { format } from 'date-fns';
-import { Mail, Trash2, Clock, User, ListOrdered } from 'lucide-react';
+import { Mail, Trash2, Clock, User, ListOrdered, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { cn } from '../../lib/utils';
+import { WaitlistStatus } from '../../types';
 
 export default function AdminWaitlist() {
-  const { waitlist, rooms, removeFromWaitlist } = useWorkspace();
+  const { waitlist, rooms, removeFromWaitlist, updateWaitlistStatus } = useWorkspace();
+
+  const getStatusColor = (status: WaitlistStatus) => {
+    switch (status) {
+      case 'waiting': return 'bg-amber-100 text-amber-700';
+      case 'served': return 'bg-green-100 text-green-700';
+      case 'rejected': return 'bg-red-100 text-red-700';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const getStatusLabel = (status: WaitlistStatus) => {
+    switch (status) {
+      case 'waiting': return 'Aguardando';
+      case 'served': return 'Atendido';
+      case 'rejected': return 'Cancelado';
+      default: return status;
+    }
+  };
 
   return (
     <div>
       <div className="mb-10">
         <h1 className="text-3xl font-bold tracking-tight text-black mb-1">Lista de Espera</h1>
-        <p className="text-gray-500 text-sm">Controle de interessados em salas atualmente ocupadas.</p>
+        <p className="text-gray-500 text-sm">Controle de interessados e leads comerciais.</p>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -17,21 +37,27 @@ export default function AdminWaitlist() {
           <table className="w-full text-left">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Interessado</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Espaço Desejado</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Interessado / Prioridade</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Espaço / Detalhes</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Status</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Registrado em</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {waitlist.map((entry) => {
+              {waitlist.sort((a, b) => (b.priorityLevel || 0) - (a.priorityLevel || 0)).map((entry) => {
                 const room = rooms.find(r => r.id === entry.roomId);
                 return (
                   <tr key={entry.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center">
-                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mr-3">
+                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center mr-3 relative">
                            <User className="w-4 h-4 text-gray-400" />
+                           {entry.priorityLevel && entry.priorityLevel > 0 && (
+                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[8px] text-white font-bold">
+                              {entry.priorityLevel}
+                            </div>
+                           )}
                         </div>
                         <div>
                           <p className="text-sm font-bold text-black">{entry.userName}</p>
@@ -43,24 +69,56 @@ export default function AdminWaitlist() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-xs font-semibold text-black bg-gray-100 px-2 py-1 rounded-lg">
-                        {room?.name}
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-semibold text-black bg-gray-100 px-2 py-0.5 rounded uppercase tracking-wider">
+                          {room?.name}
+                        </span>
+                        {entry.interestDetails && (
+                          <p className="text-[11px] text-gray-500 max-w-[200px] truncate" title={entry.interestDetails}>
+                            {entry.interestDetails}
+                          </p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={cn("text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-tight", getStatusColor(entry.status))}>
+                        {getStatusLabel(entry.status)}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center text-xs text-gray-500">
                         <Clock className="w-3.5 h-3.5 mr-2" />
-                        {format(new Date(entry.createdAt), 'dd/MM/yyyy HH:mm')}
+                        {format(new Date(entry.createdAt), 'dd/MM/yyyy')}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => removeFromWaitlist(entry.id)}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                        title="Remover da lista"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex justify-end items-center space-x-2">
+                        {entry.status === 'waiting' && (
+                          <>
+                            <button
+                              onClick={() => updateWaitlistStatus(entry.id, 'served')}
+                              className="p-1.5 text-green-500 hover:bg-green-50 rounded-lg transition-all"
+                              title="Marcar como Atendido"
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => updateWaitlistStatus(entry.id, 'rejected')}
+                              className="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg transition-all"
+                              title="Cancelar Interesse"
+                            >
+                              <AlertCircle className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                        <button
+                          onClick={() => removeFromWaitlist(entry.id)}
+                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                          title="Excluir Registro"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

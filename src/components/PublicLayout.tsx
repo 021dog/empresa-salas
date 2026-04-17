@@ -12,6 +12,7 @@ export default function PublicLayout() {
   const navLinks = [
     { name: 'Início', path: '/' },
     { name: 'Salas', path: '/salas' },
+    { name: 'Auditório', path: '/auditorio' },
     { name: 'Empresas', path: '/empresas' },
     ...(user ? [{ name: 'Minhas Reservas', path: '/meus-agendamentos' }] : []),
   ];
@@ -137,6 +138,7 @@ export default function PublicLayout() {
               <h3 className="text-black font-semibold mb-4 text-sm uppercase tracking-wider">Plataforma</h3>
               <ul className="space-y-2 text-sm">
                 <li><Link to="/salas" className="hover:text-black transition-colors">Ver Salas</Link></li>
+                <li><Link to="/auditorio" className="hover:text-black transition-colors">Auditório</Link></li>
                 <li><Link to="/empresas" className="hover:text-black transition-colors">Diretório</Link></li>
                 <li><Link to="/login" className="hover:text-black transition-colors">Administração</Link></li>
               </ul>

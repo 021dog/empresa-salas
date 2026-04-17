@@ -1,77 +1,109 @@
+import React, { useState } from 'react';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import { motion } from 'motion/react';
-import { Building2, Mail, Calendar } from 'lucide-react';
+import { Building2, Search, Mail, ExternalLink, Filter, MapPin } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export default function CompanyDirectory() {
-  const { companies } = useWorkspace();
+  const { companies, rooms } = useWorkspace();
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredCompanies = companies.filter(c => 
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <div className="bg-white min-h-screen py-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-16">
-          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-[0.3em] mb-4">Ecossistema</h2>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-black">Diretório de Empresas</h1>
-          <p className="text-gray-500 mt-4 max-w-2xl text-lg">
-            Conheça as mentes brilhantes e empresas inovadoras que chamam o WorkSpace Central de casa.
+    <div className="pb-20">
+      <header className="mb-20 text-center max-w-3xl mx-auto">
+        <motion.div
+           initial={{ opacity: 0, y: 10 }}
+           animate={{ opacity: 1, y: 0 }}
+        >
+          <h1 className="text-5xl font-black text-black tracking-tighter mb-6">Comunidade Vibrante</h1>
+          <p className="text-xl text-gray-500 leading-relaxed">
+            Conheça as empresas que escolheram o WorkSpace Central para impulsionar seus negócios. Networking e colaboração em um só lugar.
           </p>
-        </div>
+        </motion.div>
+      </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {companies.map((company, index) => (
+      {/* Search and Filters */}
+      <div className="mb-12 flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="relative w-full max-w-md group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-black transition-colors" />
+          <input 
+            type="text"
+            placeholder="Buscar por nome ou setor..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-12 pr-4 py-4 bg-white border border-gray-100 rounded-[1.5rem] shadow-sm focus:ring-2 focus:ring-black focus:border-transparent transition-all"
+          />
+        </div>
+        <button className="flex items-center gap-2 px-6 py-4 bg-white border border-gray-100 rounded-[1.5rem] text-sm font-bold hover:bg-gray-50 transition-colors">
+          <Filter className="w-4 h-4" />
+          Setores
+        </button>
+      </div>
+
+      {/* Companies Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <AnimatePresence mode="popLayout">
+          {filteredCompanies.map((company, i) => (
             <motion.div
+              layout
               key={company.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="group bg-gray-50 rounded-3xl p-8 border border-transparent hover:border-black/10 hover:bg-white hover:shadow-2xl transition-all duration-500"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ delay: i * 0.05 }}
+              className="bg-white rounded-[2rem] border border-gray-100 p-8 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all group flex flex-col h-full"
             >
-              <div className="flex items-start gap-6">
-                <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0 grayscale group-hover:grayscale-0 transition-all duration-500 shadow-sm border border-gray-100">
-                  <img src={company.logo} alt={company.name} className="w-full h-full object-cover" />
+              <div className="flex justify-between items-start mb-8">
+                <div className="w-20 h-20 rounded-2xl bg-gray-50 flex items-center justify-center border border-gray-100 p-4 transition-transform group-hover:rotate-3">
+                  {company.logo ? (
+                    <img src={company.logo} alt={company.name} className="w-full h-full object-contain" />
+                  ) : (
+                    <Building2 className="w-8 h-8 text-gray-300" />
+                  )}
                 </div>
-                <div className="flex-1">
-                  <div className="flex justify-between items-start mb-4">
-                    <h2 className="text-2xl font-bold tracking-tight">{company.name}</h2>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 bg-white border border-gray-100 px-2.5 py-1 rounded-full group-hover:border-black group-hover:text-black transition-colors">
-                      Residente
-                    </span>
-                  </div>
-                  <p className="text-gray-500 text-sm leading-relaxed mb-6">
-                    {company.description}
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="flex items-center text-xs text-gray-400">
-                      <Mail className="w-3.5 h-3.5 mr-2" />
-                      {company.contactEmail}
-                    </div>
-                    <div className="flex items-center text-xs text-gray-400">
-                      <Calendar className="w-3.5 h-3.5 mr-2" />
-                      Desde {format(new Date(company.residentSince), 'MMMM yyyy')}
-                    </div>
-                  </div>
+                {company.website && (
+                  <a 
+                    href={company.website} 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="p-3 bg-gray-50 rounded-xl text-gray-400 hover:text-black hover:bg-gray-100 transition-all"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                )}
+              </div>
+
+              <h3 className="text-xl font-bold text-black mb-3">{company.name}</h3>
+              <p className="text-gray-500 text-sm leading-relaxed mb-8 flex-grow">
+                {company.description}
+              </p>
+
+              <div className="space-y-4 pt-6 border-t border-gray-50">
+                <div className="flex items-center text-xs text-gray-400 font-medium">
+                  <MapPin className="w-3.5 h-3.5 mr-2 shrink-0" />
+                  <span>Residente desde {format(new Date(company.residentSince), 'MMMM \'de\' yyyy', { locale: ptBR })}</span>
+                </div>
+                <div className="flex items-center text-xs text-gray-400 font-medium truncate">
+                  <Mail className="w-3.5 h-3.5 mr-2 shrink-0" />
+                  <span>{company.contactEmail}</span>
                 </div>
               </div>
             </motion.div>
           ))}
-        </div>
-
-        {/* Community Banner */}
-        <div className="mt-24 p-12 bg-black rounded-[40px] text-white overflow-hidden relative">
-          <div className="relative z-10 md:max-w-xl">
-            <h2 className="text-3xl md:text-5xl font-bold mb-6 tracking-tight">Traga sua empresa para nossa rede.</h2>
-            <p className="text-gray-400 mb-10 text-lg">
-              Mais do que um metro quadrado, oferecemos a conexão necessária para o sucesso.
-            </p>
-            <button className="px-8 py-4 bg-white text-black font-bold rounded-xl hover:bg-gray-200 transition-all uppercase tracking-widest text-sm">
-              Solicitar Proposta
-            </button>
-          </div>
-          <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-20 hidden md:block">
-             <img src="https://picsum.photos/seed/community2/800/800" alt="community" className="w-full h-full object-cover grayscale invert" />
-          </div>
-        </div>
+        </AnimatePresence>
       </div>
+
+      {filteredCompanies.length === 0 && (
+        <div className="py-20 text-center">
+          <p className="text-gray-400 font-medium italic">Nenhuma empresa encontrada com este critério.</p>
+        </div>
+      )}
     </div>
   );
 }

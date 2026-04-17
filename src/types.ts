@@ -1,4 +1,7 @@
-export type RoomType = 'Coworking' | 'Private Office' | 'Meeting Room' | 'Lounge';
+export type RoomType = 'Coworking' | 'Private Office' | 'Meeting Room' | 'Lounge' | 'Auditorium';
+export type RoomStatus = 'available' | 'busy' | 'maintenance';
+export type BookingStatus = 'pending' | 'confirmed' | 'rejected' | 'cancelled';
+export type WaitlistStatus = 'waiting' | 'served' | 'rejected';
 
 export interface Room {
   id: string;
@@ -8,6 +11,8 @@ export interface Room {
   description: string;
   pricePerHour: number;
   imageUrl: string;
+  status?: RoomStatus;
+  features?: string[];
 }
 
 export interface Company {
@@ -17,6 +22,7 @@ export interface Company {
   description: string;
   residentSince: string;
   contactEmail: string;
+  website?: string;
 }
 
 export interface Booking {
@@ -28,7 +34,8 @@ export interface Booking {
   date: string; // ISO format
   startTime: string; // Formato HH:mm
   endTime: string; // Formato HH:mm
-  status: 'confirmed' | 'cancelled';
+  status: BookingStatus;
+  notes?: string;
 }
 
 export interface WaitlistEntry {
@@ -36,6 +43,9 @@ export interface WaitlistEntry {
   roomId: string;
   userName: string;
   userEmail: string;
+  interestDetails?: string;
+  status: WaitlistStatus;
+  priorityLevel?: number;
   createdAt: string;
 }
 
@@ -43,5 +53,5 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'management' | 'user';
 }
