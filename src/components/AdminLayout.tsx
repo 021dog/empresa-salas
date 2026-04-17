@@ -14,7 +14,7 @@ import {
 import { cn } from '../lib/utils';
 
 export default function AdminLayout() {
-  const { user, logout } = useWorkspace();
+  const { user, logout, settings } = useWorkspace();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -39,7 +39,7 @@ export default function AdminLayout() {
         <div className="p-6">
           <Link to="/" className="text-xl font-bold tracking-tighter text-black flex items-center">
             <div className="w-6 h-6 bg-black rounded-lg mr-2"></div>
-            WorkSpace
+            {settings.appName}
             <span className="ml-1 text-[10px] bg-black text-white px-1.5 py-0.5 rounded uppercase font-bold tracking-widest">Admin</span>
           </Link>
         </div>

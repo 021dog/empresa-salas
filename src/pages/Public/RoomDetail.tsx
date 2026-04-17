@@ -21,8 +21,9 @@ import { format } from 'date-fns';
 export default function RoomDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { rooms, companies, createBooking, addToWaitlist } = useWorkspace();
+  const { rooms, companies, createBooking, addToWaitlist, getRoomStatus } = useWorkspace();
   const room = rooms.find(r => r.id === id);
+  const currentStatus = room ? getRoomStatus(room.id) : 'available';
 
   const [bookingDate, setBookingDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [startTime, setStartTime] = useState('09:00');
@@ -79,9 +80,20 @@ export default function RoomDetail() {
             </Link>
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div>
-                <span className="inline-block bg-white text-black text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-4">
-                  {room.type}
-                </span>
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="inline-block bg-white text-black text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
+                    {room.type}
+                  </span>
+                  {currentStatus === 'busy' ? (
+                    <span className="inline-block bg-red-500 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
+                      Ocupada Agora
+                    </span>
+                  ) : (
+                    <span className="inline-block bg-green-500 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
+                      Disponível Agora
+                    </span>
+                  )}
+                </div>
                 <h1 className="text-4xl md:text-6xl font-bold text-white tracking-tight">{room.name}</h1>
               </div>
               <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-6 rounded-2xl text-white">

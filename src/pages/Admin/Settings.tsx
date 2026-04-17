@@ -1,12 +1,24 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Save, Shield, Clock, Globe, Bell } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { useWorkspace } from '../../context/WorkspaceContext';
 
 export default function AdminSettings() {
-  const [appName, setAppName] = useState('WorkSpace Central');
-  const [openingTime, setOpeningTime] = useState('08:00');
-  const [closingTime, setClosingTime] = useState('22:00');
-  const [isAutoConfirm, setIsAutoConfirm] = useState(true);
+  const { settings, updateSettings } = useWorkspace();
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  const [formData, setFormData] = useState(settings);
+
+  const handleSave = () => {
+    setIsSaving(true);
+    setTimeout(() => {
+      updateSettings(formData);
+      setIsSaving(false);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    }, 800);
+  };
 
   return (
     <div className="max-w-4xl">
@@ -14,6 +26,13 @@ export default function AdminSettings() {
         <h1 className="text-3xl font-bold tracking-tight text-black mb-1">Configurações do Sistema</h1>
         <p className="text-gray-500 text-sm">Gerencie as regras globais e preferências da plataforma.</p>
       </div>
+
+      {showSuccess && (
+        <div className="mb-6 bg-green-50 border border-green-100 text-green-700 px-6 py-4 rounded-2xl flex items-center justify-between animate-in fade-in slide-in-from-top-4">
+          <p className="text-sm font-bold">Configurações salvas com sucesso!</p>
+          <button onClick={() => setShowSuccess(false)} className="text-green-700 hover:text-green-900 font-bold">FECHAR</button>
+        </div>
+      )}
 
       <div className="space-y-8">
         {/* General Settings */}
@@ -27,8 +46,8 @@ export default function AdminSettings() {
               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Nome da Plataforma</label>
               <input
                 type="text"
-                value={appName}
-                onChange={(e) => setAppName(e.target.value)}
+                value={formData.appName}
+                onChange={(e) => setFormData({ ...formData, appName: e.target.value })}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm focus:ring-1 focus:ring-black focus:border-black"
               />
             </div>
@@ -54,8 +73,8 @@ export default function AdminSettings() {
               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Abertura</label>
               <input
                 type="time"
-                value={openingTime}
-                onChange={(e) => setOpeningTime(e.target.value)}
+                value={formData.operatingHours.open}
+                onChange={(e) => setFormData({ ...formData, operatingHours: { ...formData.operatingHours, open: e.target.value } })}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm focus:ring-1 focus:ring-black focus:border-black"
               />
             </div>
@@ -63,8 +82,8 @@ export default function AdminSettings() {
               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Fechamento</label>
               <input
                 type="time"
-                value={closingTime}
-                onChange={(e) => setClosingTime(e.target.value)}
+                value={formData.operatingHours.close}
+                onChange={(e) => setFormData({ ...formData, operatingHours: { ...formData.operatingHours, close: e.target.value } })}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm focus:ring-1 focus:ring-black focus:border-black"
               />
             </div>
@@ -84,15 +103,15 @@ export default function AdminSettings() {
                 <p className="text-xs text-gray-400">Permitir que reservas sem conflito sejam confirmadas instantaneamente.</p>
               </div>
               <button
-                onClick={() => setIsAutoConfirm(!isAutoConfirm)}
+                onClick={() => setFormData({ ...formData, publicBookingEnabled: !formData.publicBookingEnabled })}
                 className={cn(
                   "w-12 h-6 rounded-full transition-all relative",
-                  isAutoConfirm ? "bg-black" : "bg-gray-200"
+                  formData.publicBookingEnabled ? "bg-black" : "bg-gray-200"
                 )}
               >
                 <div className={cn(
                   "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
-                  isAutoConfirm ? "left-7" : "left-1"
+                  formData.publicBookingEnabled ? "left-7" : "left-1"
                 )} />
               </button>
             </div>
@@ -102,15 +121,30 @@ export default function AdminSettings() {
                 <p className="text-sm font-bold text-black">Notificações por Email</p>
                 <p className="text-xs text-gray-400">Enviar lembretes automáticos para empresas residentes.</p>
               </div>
-              <Bell className="w-5 h-5 text-gray-300" />
+              <button
+                onClick={() => setFormData({ ...formData, notificationsEnabled: !formData.notificationsEnabled })}
+                className={cn(
+                  "w-12 h-6 rounded-full transition-all relative",
+                  formData.notificationsEnabled ? "bg-black" : "bg-gray-200"
+                )}
+              >
+                <div className={cn(
+                  "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
+                  formData.notificationsEnabled ? "left-7" : "left-1"
+                )} />
+              </button>
             </div>
           </div>
         </section>
 
         <div className="flex justify-end pt-4 pb-12">
-            <button className="bg-black text-white px-8 py-4 rounded-2xl font-bold flex items-center hover:bg-gray-800 transition-all shadow-xl hover:shadow-black/20">
+            <button 
+              onClick={handleSave}
+              disabled={isSaving}
+              className="bg-black text-white px-8 py-4 rounded-2xl font-bold flex items-center hover:bg-gray-800 transition-all shadow-xl hover:shadow-black/20 disabled:opacity-50"
+            >
                 <Save className="w-5 h-5 mr-2" />
-                Salvar Todas as Configurações
+                {isSaving ? 'Salvando...' : 'Salvar Todas as Configurações'}
             </button>
         </div>
       </div>

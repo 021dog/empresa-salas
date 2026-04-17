@@ -7,7 +7,7 @@ import { Users, Filter, ChevronRight, Search } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export default function RoomList() {
-  const { rooms } = useWorkspace();
+  const { rooms, getRoomStatus } = useWorkspace();
   const [filterType, setFilterType] = useState<RoomType | 'All'>('All');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -80,10 +80,19 @@ export default function RoomList() {
                         alt={room.name}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
                       />
-                      <div className="absolute top-4 left-4">
-                        <span className="bg-white/90 backdrop-blur-md text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full shadow-sm text-black">
+                      <div className="absolute top-4 left-4 flex flex-col gap-2">
+                        <span className="bg-white/90 backdrop-blur-md text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full shadow-sm text-black inline-block">
                           {room.type}
                         </span>
+                        {getRoomStatus(room.id) === 'busy' ? (
+                          <span className="bg-red-500/90 backdrop-blur-md text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full shadow-sm text-white inline-block">
+                            Ocupada Agora
+                          </span>
+                        ) : (
+                          <span className="bg-green-500/90 backdrop-blur-md text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full shadow-sm text-white inline-block">
+                            Disponível
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="p-8 flex-1 flex flex-col">

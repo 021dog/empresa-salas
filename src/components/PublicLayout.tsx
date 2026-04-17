@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 export default function PublicLayout() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
-  const { user } = useWorkspace();
+  const { user, settings } = useWorkspace();
 
   const navLinks = [
     { name: 'Início', path: '/' },
@@ -23,7 +23,7 @@ export default function PublicLayout() {
             <div className="flex items-center">
               <Link to="/" className="text-2xl font-bold tracking-tighter text-black flex items-center">
                 <div className="w-8 h-8 bg-black rounded-lg mr-2"></div>
-                WorkSpace
+                {settings.appName}
               </Link>
             </div>
 
@@ -118,7 +118,7 @@ export default function PublicLayout() {
             <div className="col-span-2">
               <Link to="/" className="text-xl font-bold tracking-tighter text-black flex items-center mb-4">
                 <div className="w-6 h-6 bg-black rounded-lg mr-2"></div>
-                WorkSpace
+                {settings.appName}
               </Link>
               <p className="max-w-xs text-sm">
                 Soluções inteligentes para espaços de trabalho modernos. Gestão de salas, residências e comunidades empresariais.

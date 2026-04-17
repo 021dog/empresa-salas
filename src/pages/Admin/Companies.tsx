@@ -9,6 +9,7 @@ export default function AdminCompanies() {
   const { companies, addCompany, updateCompany, deleteCompany } = useWorkspace();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [formData, setFormData] = useState<Omit<Company, 'id'>>({
     name: '',
@@ -37,12 +38,18 @@ export default function AdminCompanies() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingCompany) {
-      updateCompany(editingCompany.id, formData);
-    } else {
-      addCompany(formData);
-    }
-    setIsModalOpen(false);
+    setIsSaving(true);
+    
+    // Simulate API delay
+    setTimeout(() => {
+      if (editingCompany) {
+        updateCompany(editingCompany.id, formData);
+      } else {
+        addCompany(formData);
+      }
+      setIsSaving(false);
+      setIsModalOpen(false);
+    }, 600);
   };
 
   const handleDelete = (id: string, name: string) => {
@@ -192,9 +199,10 @@ export default function AdminCompanies() {
                 <div className="pt-4">
                   <button
                     type="submit"
-                    className="w-full py-4 bg-black text-white font-bold rounded-2xl shadow-xl hover:bg-gray-800 transition-all text-sm uppercase tracking-widest"
+                    disabled={isSaving}
+                    className="w-full py-4 bg-black text-white font-bold rounded-2xl shadow-xl hover:bg-gray-800 transition-all text-sm uppercase tracking-widest disabled:opacity-50"
                   >
-                    {editingCompany ? 'Salvar Alterações' : 'Registrar Empresa'}
+                    {isSaving ? 'Registrando...' : (editingCompany ? 'Salvar Alterações' : 'Registrar Empresa')}
                   </button>
                 </div>
               </form>

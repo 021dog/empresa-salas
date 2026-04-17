@@ -10,6 +10,7 @@ export default function AdminBookings() {
   const { bookings, rooms, companies, createBooking, cancelBooking } = useWorkspace();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ text: '', type: 'success' as 'success' | 'error' });
 
   // Form State
@@ -36,14 +37,22 @@ export default function AdminBookings() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const result = createBooking(formData);
-    setMessage({ text: result.message, type: result.success ? 'success' : 'error' });
-    if (result.success) {
-      setTimeout(() => {
-          setIsModalOpen(false);
-          setMessage({ text: '', type: 'success' });
-      }, 1500);
-    }
+    setIsSaving(true);
+    setMessage({ text: '', type: 'success' });
+    
+    // Slight delay for realism
+    setTimeout(() => {
+        const result = createBooking(formData);
+        setMessage({ text: result.message, type: result.success ? 'success' : 'error' });
+        setIsSaving(false);
+        
+        if (result.success) {
+          setTimeout(() => {
+              setIsModalOpen(false);
+              setMessage({ text: '', type: 'success' });
+          }, 1500);
+        }
+    }, 600);
   };
 
   return (
@@ -254,9 +263,10 @@ export default function AdminBookings() {
                     <div className="pt-4">
                         <button
                             type="submit"
-                            className="w-full py-4 bg-black text-white font-bold rounded-2xl shadow-xl hover:bg-gray-800 transition-all text-sm uppercase tracking-widest"
+                            disabled={isSaving}
+                            className="w-full py-4 bg-black text-white font-bold rounded-2xl shadow-xl hover:bg-gray-800 transition-all text-sm uppercase tracking-widest disabled:opacity-50"
                         >
-                            Confirmar Reserva
+                            {isSaving ? 'Verificando Disponibilidade...' : 'Confirmar Reserva'}
                         </button>
                     </div>
                 </form>

@@ -8,6 +8,7 @@ export default function AdminRooms() {
   const { rooms, addRoom, updateRoom, deleteRoom } = useWorkspace();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [formData, setFormData] = useState<Omit<Room, 'id'>>({
     name: '',
@@ -38,12 +39,18 @@ export default function AdminRooms() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingRoom) {
-      updateRoom(editingRoom.id, formData);
-    } else {
-      addRoom(formData);
-    }
-    setIsModalOpen(false);
+    setIsSaving(true);
+    
+    // Simulating API call for feedback
+    setTimeout(() => {
+      if (editingRoom) {
+        updateRoom(editingRoom.id, formData);
+      } else {
+        addRoom(formData);
+      }
+      setIsSaving(false);
+      setIsModalOpen(false);
+    }, 600);
   };
 
   const handleDelete = (id: string, name: string) => {
@@ -216,9 +223,10 @@ export default function AdminRooms() {
                 <div className="pt-4">
                   <button
                     type="submit"
-                    className="w-full py-4 bg-black text-white font-bold rounded-2xl shadow-xl hover:bg-gray-800 transition-all text-sm uppercase tracking-widest"
+                    disabled={isSaving}
+                    className="w-full py-4 bg-black text-white font-bold rounded-2xl shadow-xl hover:bg-gray-800 transition-all text-sm uppercase tracking-widest disabled:opacity-50"
                   >
-                    {editingRoom ? 'Salvar Alterações' : 'Criar Sala'}
+                    {isSaving ? 'Processando...' : (editingRoom ? 'Salvar Alterações' : 'Criar Sala')}
                   </button>
                 </div>
               </form>
