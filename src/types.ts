@@ -22,6 +22,8 @@ export interface Company {
 export interface Booking {
   id: string;
   roomId: string;
+  userId: string;
+  userEmail?: string;
   companyId: string;
   date: string; // ISO format
   startTime: string; // Formato HH:mm

@@ -19,7 +19,8 @@ interface WorkspaceContextType {
   settings: WorkspaceSettings;
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password?: string) => Promise<{ success: boolean; message?: string }>;
+  login: (email: string, password?: string) => Promise<{ success: boolean; message?: string; role?: 'admin' | 'user' }>;
+  signInWithGoogle: () => Promise<{ success: boolean; url?: string; message?: string }>;
   signUp: (email: string, password: string, name: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   updateSettings: (settings: Partial<WorkspaceSettings>) => void;
@@ -49,6 +50,14 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>(MOCK_WAITLIST);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Emergency timeout for loading state
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 3000); // 3 seconds max wait
+    return () => clearTimeout(timer);
+  }, []);
 
   const initialSettings: WorkspaceSettings = {
     appName: 'WorkSpace Central',
@@ -91,60 +100,80 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   // Auth Status & Initial Load
   useEffect(() => {
-    if (!supabase) {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) setUser(JSON.parse(storedUser));
-      setIsLoading(false);
-      return;
-    }
+    const initAuth = async () => {
+      if (!supabase) {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) setUser(JSON.parse(storedUser));
+        setIsLoading(false);
+        return;
+      }
 
-    // Check session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        // Fetch role from profiles
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single()
-          .then(({ data: profile }) => {
+      try {
+        // Check session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) throw sessionError;
+
+        if (session?.user) {
+          // Fetch role from profiles
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (profileError && profileError.code !== 'PGRST116') { // PGRST116 is "no rows returned", which is fine
+             console.warn('Profile fetch error:', profileError);
+          }
+
+          setUser({
+            id: session.user.id,
+            email: session.user.email!,
+            name: profile?.full_name || session.user.email!.split('@')[0],
+            role: (profile?.role as any) || 'user'
+          });
+        }
+      } catch (err) {
+        console.error('Auth initialization error:', err);
+      } finally {
+        setIsLoading(false);
+        fetchData();
+      }
+    };
+
+    initAuth();
+
+    // Listen for auth changes
+    if (supabase) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          try {
+            const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
             setUser({
               id: session.user.id,
               email: session.user.email!,
               name: profile?.full_name || session.user.email!.split('@')[0],
               role: (profile?.role as any) || 'user'
             });
-          });
-      }
-    });
+          } catch (err) {
+            console.error('Error on auth change:', err);
+          }
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+        }
+      });
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-        setUser({
-          id: session.user.id,
-          email: session.user.email!,
-          name: profile?.full_name || session.user.email!.split('@')[0],
-          role: (profile?.role as any) || 'user'
-        });
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-      }
-    });
+      // Set up Realtime Subscriptions
+      const sub = supabase
+        .channel('schema-db-changes')
+        .on('postgres_changes', { event: '*', schema: 'public' }, () => fetchData())
+        .subscribe();
 
-    fetchData();
-
-    // Set up Realtime Subscriptions
-    const sub = supabase
-      .channel('schema-db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public' }, () => fetchData())
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-      supabase.removeChannel(sub);
-    };
+      return () => {
+        subscription.unsubscribe();
+        supabase.removeChannel(sub);
+      };
+    }
   }, [fetchData]);
 
   // Sync settings (still using localStorage for simplicity or can be in Supabase settings table)
@@ -162,17 +191,37 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     if (!supabase) {
       // Prototype Fallback
       if (email.includes('@')) {
-        const adminUser: User = { id: 'admin-1', name: 'Administrador (Demo)', email, role: 'admin' };
+        const role: 'admin' | 'user' = email.startsWith('admin') ? 'admin' : 'user';
+        const adminUser: User = { id: role === 'admin' ? 'admin-1' : 'user-1', name: role === 'admin' ? 'Administrador' : 'Usuário', email, role };
         setUser(adminUser);
         localStorage.setItem('user', JSON.stringify(adminUser));
-        return { success: true };
+        return { success: true, role };
       }
       return { success: false, message: 'Credenciais inválidas' };
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password: password || '' });
     if (error) return { success: false, message: error.message };
-    return { success: true };
+
+    // Fetch profile role directly to return it
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single();
+    
+    return { success: true, role: (profile?.role as any) || 'user' };
+  };
+
+  const signInWithGoogle = async () => {
+    if (!supabase) return { success: false, message: 'Supabase não configurado' };
+    
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        skipBrowserRedirect: true
+      }
+    });
+
+    if (error) return { success: false, message: error.message };
+    return { success: true, url: data.url };
   };
 
   const signUp = async (email: string, password: string, name: string) => {

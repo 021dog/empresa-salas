@@ -12,7 +12,9 @@ import Home from './pages/Public/Home';
 import RoomList from './pages/Public/RoomList';
 import RoomDetail from './pages/Public/RoomDetail';
 import CompanyDirectory from './pages/Public/CompanyDirectory';
+import MyBookings from './pages/Public/MyBookings';
 import Login from './pages/Auth/Login';
+import AuthCallback from './pages/Auth/Callback';
 import Dashboard from './pages/Admin/Dashboard';
 import AdminRooms from './pages/Admin/Rooms';
 import AdminCompanies from './pages/Admin/Companies';
@@ -30,7 +32,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppContent() {
-  const { isLoading } = useWorkspace();
+  const { isLoading, user } = useWorkspace();
 
   if (isLoading) {
     return (
@@ -41,15 +43,27 @@ function AppContent() {
     );
   }
 
+  // Global Auth Wall
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
+  }
+
   return (
     <Routes>
-      {/* Public Routes */}
+      {/* Public Routes protected but accessible if logged in */}
       <Route element={<PublicLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/salas" element={<RoomList />} />
         <Route path="/salas/:id" element={<RoomDetail />} />
         <Route path="/empresas" element={<CompanyDirectory />} />
-        <Route path="/login" element={<Login />} />
+        <Route path="/meus-agendamentos" element={<MyBookings />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/login" element={<Navigate to={user.role === 'admin' ? "/admin/dashboard" : "/meus-agendamentos"} replace />} />
       </Route>
 
       {/* Admin Routes */}
@@ -66,6 +80,9 @@ function AppContent() {
         <Route path="waitlist" element={<AdminWaitlist />} />
         <Route path="settings" element={<AdminSettings />} />
       </Route>
+
+      {/* Catch all for authenticated users */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

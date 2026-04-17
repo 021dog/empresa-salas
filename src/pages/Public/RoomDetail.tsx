@@ -21,7 +21,7 @@ import { format } from 'date-fns';
 export default function RoomDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { rooms, companies, createBooking, addToWaitlist, getRoomStatus } = useWorkspace();
+  const { rooms, companies, createBooking, addToWaitlist, getRoomStatus, user } = useWorkspace();
   const room = rooms.find(r => r.id === id);
   const currentStatus = room ? getRoomStatus(room.id) : 'available';
 
@@ -34,15 +34,25 @@ export default function RoomDetail() {
 
   if (!room) return <div className="py-20 text-center">Sala não encontrada.</div>;
 
-  const handleBooking = (e: React.FormEvent) => {
+  const handleBooking = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!user) {
+      setMessage({ text: 'Você precisa estar logado para realizar uma reserva.', type: 'error' });
+      setTimeout(() => navigate('/login'), 2000);
+      return;
+    }
+
     if (!selectedCompanyId) {
       setMessage({ text: 'Selecione uma empresa para a reserva.', type: 'error' });
       return;
     }
 
-    const result = createBooking({
+    setIsReserving(true);
+    const result = await createBooking({
       roomId: room.id,
+      userId: user.id,
+      userEmail: user.email,
       companyId: selectedCompanyId,
       date: bookingDate,
       startTime,
@@ -50,19 +60,25 @@ export default function RoomDetail() {
     });
 
     setMessage({ text: result.message, type: result.success ? 'success' : 'error' });
+    setIsReserving(false);
 
     if (result.success) {
       setTimeout(() => {
-        navigate('/salas');
+        navigate('/meus-agendamentos');
       }, 2000);
     }
   };
 
-  const handleWaitlist = () => {
-    addToWaitlist({
+  const handleWaitlist = async () => {
+    if (!user) {
+      setMessage({ text: 'Faça login para entrar na lista de espera.', type: 'error' });
+      return;
+    }
+
+    await addToWaitlist({
       roomId: room.id,
-      userName: 'Usuário Interessado',
-      userEmail: 'interessado@email.com'
+      userName: user.name,
+      userEmail: user.email
     });
     setMessage({ text: 'Adicionado à lista de espera com sucesso!', type: 'success' });
   };
@@ -230,10 +246,11 @@ export default function RoomDetail() {
 
                 <button
                   type="submit"
-                  className="w-full py-4 bg-black text-white font-bold rounded-xl hover:bg-gray-800 transition-all shadow-lg hover:shadow-black/20 flex items-center justify-center group"
+                  disabled={isReserving}
+                  className="w-full py-4 bg-black text-white font-bold rounded-xl hover:bg-gray-800 transition-all shadow-lg hover:shadow-black/20 flex items-center justify-center group disabled:opacity-50"
                 >
-                  Confirmar Reserva
-                  <ChevronRight className="ml-1 w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  {isReserving ? 'Processando...' : 'Confirmar Reserva'}
+                  {!isReserving && <ChevronRight className="ml-1 w-4 h-4 group-hover:translate-x-0.5 transition-transform" />}
                 </button>
               </form>
 

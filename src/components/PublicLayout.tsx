@@ -7,12 +7,13 @@ import { motion, AnimatePresence } from 'motion/react';
 export default function PublicLayout() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
-  const { user, settings } = useWorkspace();
+  const { user, settings, logout } = useWorkspace();
 
   const navLinks = [
     { name: 'Início', path: '/' },
     { name: 'Salas', path: '/salas' },
     { name: 'Empresas', path: '/empresas' },
+    ...(user ? [{ name: 'Minhas Reservas', path: '/meus-agendamentos' }] : []),
   ];
 
   return (
@@ -44,12 +45,20 @@ export default function PublicLayout() {
 
             <div className="hidden md:flex items-center space-x-4">
               {user ? (
-                <Link
-                  to="/admin/dashboard"
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-black hover:bg-gray-800 focus:outline-none"
-                >
-                  Dashboard
-                </Link>
+                <div className="flex items-center gap-4">
+                  <Link
+                    to={user.role === 'admin' ? "/admin/dashboard" : "/meus-agendamentos"}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-xl text-white bg-black hover:bg-gray-800 focus:outline-none transition-all"
+                  >
+                    {user.role === 'admin' ? 'Dashboard' : 'Meu Perfil'}
+                  </Link>
+                  <button
+                    onClick={() => logout()}
+                    className="text-xs font-bold text-gray-400 hover:text-red-500 transition-colors uppercase tracking-widest"
+                  >
+                    Sair
+                  </button>
+                </div>
               ) : (
                 <Link
                   to="/login"

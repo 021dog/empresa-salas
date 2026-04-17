@@ -63,6 +63,7 @@ export const MOCK_BOOKINGS: Booking[] = [
     id: '1',
     roomId: '1',
     companyId: '1',
+    userId: 'admin-1',
     date: '2026-04-20',
     startTime: '09:00',
     endTime: '11:00',
