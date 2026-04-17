@@ -98,33 +98,30 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Auth Status & Initial Load
+  // Sync settings & Auth on Load
   useEffect(() => {
     const initAuth = async () => {
       if (!supabase) {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
+        try {
+          const storedUser = localStorage.getItem('user');
+          if (storedUser && storedUser !== 'undefined') setUser(JSON.parse(storedUser));
+        } catch (e) {
+          console.error('Local storage user parse error', e);
+        }
         setIsLoading(false);
         return;
       }
 
       try {
-        // Check session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        const { data } = await supabase.auth.getSession();
+        const session = data?.session;
         
-        if (sessionError) throw sessionError;
-
         if (session?.user) {
-          // Fetch role from profiles
-          const { data: profile, error: profileError } = await supabase
+          const { data: profile } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
-            .single();
-
-          if (profileError && profileError.code !== 'PGRST116') { // PGRST116 is "no rows returned", which is fine
-             console.warn('Profile fetch error:', profileError);
-          }
+            .maybeSingle();
 
           setUser({
             id: session.user.id,
@@ -143,27 +140,21 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
     initAuth();
 
-    // Listen for auth changes
     if (supabase) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
-          try {
-            const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-            setUser({
-              id: session.user.id,
-              email: session.user.email!,
-              name: profile?.full_name || session.user.email!.split('@')[0],
-              role: (profile?.role as any) || 'user'
-            });
-          } catch (err) {
-            console.error('Error on auth change:', err);
-          }
+          const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+          setUser({
+            id: session.user.id,
+            email: session.user.email!,
+            name: profile?.full_name || session.user.email!.split('@')[0],
+            role: (profile?.role as any) || 'user'
+          });
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
         }
       });
 
-      // Set up Realtime Subscriptions
       const sub = supabase
         .channel('schema-db-changes')
         .on('postgres_changes', { event: '*', schema: 'public' }, () => fetchData())
@@ -176,10 +167,13 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     }
   }, [fetchData]);
 
-  // Sync settings (still using localStorage for simplicity or can be in Supabase settings table)
   useEffect(() => {
-    const stored = localStorage.getItem('settings');
-    if (stored) setSettings(JSON.parse(stored));
+    try {
+      const storedSettings = localStorage.getItem('settings');
+      if (storedSettings && storedSettings !== 'undefined') setSettings(JSON.parse(storedSettings));
+    } catch (e) {
+      console.error('Settings parse error', e);
+    }
   }, []);
 
   useEffect(() => {
@@ -189,12 +183,16 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   // Global Auth logic
   const login = async (email: string, password?: string) => {
     if (!supabase) {
-      // Prototype Fallback
       if (email.includes('@')) {
         const role: 'admin' | 'user' = email.startsWith('admin') ? 'admin' : 'user';
-        const adminUser: User = { id: role === 'admin' ? 'admin-1' : 'user-1', name: role === 'admin' ? 'Administrador' : 'Usuário', email, role };
-        setUser(adminUser);
-        localStorage.setItem('user', JSON.stringify(adminUser));
+        const mockUser: User = { 
+          id: role === 'admin' ? 'admin-1' : 'user-1', 
+          name: role === 'admin' ? 'Administrador' : 'Usuário', 
+          email, 
+          role 
+        };
+        setUser(mockUser);
+        localStorage.setItem('user', JSON.stringify(mockUser));
         return { success: true, role };
       }
       return { success: false, message: 'Credenciais inválidas' };
@@ -203,9 +201,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password: password || '' });
     if (error) return { success: false, message: error.message };
 
-    // Fetch profile role directly to return it
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single();
-    
     return { success: true, role: (profile?.role as any) || 'user' };
   };
 
@@ -225,7 +221,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, name: string) => {
-    if (!supabase) return { success: false, message: 'Supabase não configurado' };
+    if (!supabase) return { success: true };
     
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -235,7 +231,6 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
     if (error) return { success: false, message: error.message };
     
-    // Create profile
     if (data.user) {
       await supabase.from('profiles').insert([
         { id: data.user.id, full_name: name, email, role: 'user' }
@@ -255,7 +250,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     setSettings(prev => ({ ...prev, ...newSettings }));
   };
 
-  // CRUD Implementations with Supabase Persistence
+  // CRUD Implementations
   const addRoom = async (room: Omit<Room, 'id'>) => {
     if (supabase) {
       await supabase.from('rooms').insert([room]);
@@ -307,7 +302,6 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   };
 
   const createBooking = async (newBooking: Omit<Booking, 'id' | 'status'>) => {
-    // Conflict check logic remains the same (can also be done in Postgres Trigger)
     const hasConflict = bookings.some(b => {
       if (b.status === 'cancelled') return false;
       if (b.roomId !== newBooking.roomId) return false;
@@ -322,25 +316,6 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     if (supabase) {
       const { error } = await supabase.from('bookings').insert([{ ...newBooking, status: 'confirmed' }]);
       if (error) return { success: false, message: error.message };
-
-      // Trigger Automation via Server
-      fetch('/api/automation/trigger', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'NEW_BOOKING', data: newBooking })
-      }).catch(console.error);
-
-      // Trigger Email Notification via Local Server Proxy
-      fetch('/api/notify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          to: user?.email || newBooking.userEmail || 'admin@workspace-central.app',
-          subject: 'Confirmação de Reserva - WorkSpace Central',
-          html: `<h1>Sua reserva foi confirmada!</h1><p>Sala: ${newBooking.roomId}</p><p>Data: ${newBooking.date} às ${newBooking.startTime}</p>`
-        })
-      }).catch(console.error);
-
     } else {
       const booking: Booking = { ...newBooking, id: Math.random().toString(36).substr(2, 9), status: 'confirmed' };
       setBookings(prev => [...prev, booking]);
@@ -394,7 +369,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   return (
     <WorkspaceContext.Provider value={{
       rooms, companies, bookings, waitlist, user, settings, isLoading,
-      login, signUp, logout, updateSettings,
+      login, signUp, logout, updateSettings, signInWithGoogle,
       addRoom, updateRoom, deleteRoom, getRoomStatus,
       addCompany, updateCompany, deleteCompany,
       createBooking, cancelBooking,

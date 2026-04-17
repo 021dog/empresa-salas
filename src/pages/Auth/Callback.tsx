@@ -2,12 +2,10 @@ import { useEffect } from 'react';
 
 export default function AuthCallback() {
   useEffect(() => {
-    // This is the logic for the OAuth popup callback
     if (window.opener) {
       window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS' }, '*');
       window.close();
     } else {
-      // If opened directly (not as popup), just go to home
       window.location.href = '/';
     }
   }, []);

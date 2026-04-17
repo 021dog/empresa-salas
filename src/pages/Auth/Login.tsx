@@ -12,19 +12,15 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, signUp, signInWithGoogle, settings, user } = useWorkspace();
+  const { login, signUp, signInWithGoogle, settings } = useWorkspace();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Listen for the OAuth success message from the popup
     const handleMessage = (event: MessageEvent) => {
-      // Security check: validate origin (simplified for dev)
       if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
-        // The WorkspaceContext will detect the new session automatically via onAuthStateChange
-        // But we might need to nudge navigation if it's already logged in
         setIsLoading(true);
         setTimeout(() => {
-          navigate('/'); // Redireciona para o fluxo de entrada global
+          navigate('/');
           setIsLoading(false);
         }, 1000);
       }
@@ -40,7 +36,6 @@ export default function Login() {
     try {
       const result = await signInWithGoogle();
       if (result.success && result.url) {
-        // Open the Google Auth URL in a popup
         const width = 600;
         const height = 700;
         const left = window.screenX + (window.outerWidth - width) / 2;
@@ -160,7 +155,7 @@ export default function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="block w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-100 placeholder-gray-400 text-black rounded-2xl text-sm focus:ring-1 focus:ring-black focus:border-black transition-all"
-                  placeholder="admin@workspace.central"
+                  placeholder="exemplo@workspace.central"
                 />
               </div>
             </div>
@@ -248,14 +243,14 @@ export default function Login() {
           </div>
 
           <p className="mt-8 text-center text-xs text-gray-400">
-             Protegido por criptografia AES-256. Apenas para uso interno autorizado.
+             Sistema de gestão interna WorkSpace. Use credenciais autorizadas.
           </p>
         </div>
 
         <div className="mt-8 flex justify-center space-x-6 text-gray-400 italic font-serif text-sm">
-           <span>Qualidade WeWork</span>
+           <span>Qualidade Premium</span>
            <span>·</span>
-           <span>Segurança Máxima</span>
+           <span>Segurança Local</span>
         </div>
       </div>
     </div>
